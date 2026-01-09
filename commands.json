@@ -5,9 +5,14 @@
     "Arguments": "-d $file"
   },
   {
+    "Name": "CHECK c2pa VALID TRUST",
+    "ExecutablePath": "D:\\soft\\c2patool\\check_trust.cmd",
+    "Arguments": "$file"
+  },
+  {
     "Name": "APPLY C2PA",
     "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
-    "Arguments": "$file -o $file_$dt -m d:\\soft\\c2patool\\my_manifest_image.json --no_signing_verify -f"
+    "Arguments": "$file -m d:\\soft\\c2patool\\my_manifest_image.json --no_signing_verify -o $file -f"
   },
   {
     "Name": "CHECK DATA",

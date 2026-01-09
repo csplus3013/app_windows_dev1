@@ -1,5 +1,14 @@
-using System.Diagnostics;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.IO;
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace MySimpleApp;
 
@@ -293,11 +302,26 @@ public partial class Form1 : Form
             string stamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
             foreach (var file in files)
             {
-                // Unconditionally replace placeholders.
-                string args = config.Arguments
-                    .Replace("{file}", $"\"{file}\"")
-                    .Replace("$file", $"\"{file}\"")
-                    .Replace("$dt", stamp);
+                string args = config.Arguments;
+
+                // 1. Smart Conjunction Logic:
+                // Treat '+' as a glue that merges into a single quoted block.
+                args = args.Replace("$file+", "\u001f" + file)
+                           .Replace("+$file", file + "\u001f")
+                           .Replace("{file}+", "\u001f" + file)
+                           .Replace("+{file}", file + "\u001f")
+                           .Replace("$dt+", "\u001f" + stamp)
+                           .Replace("+$dt", stamp + "\u001f")
+                           .Replace("+", ""); // Join middle literals
+
+                // Clean up duplicate markers and convert to quotes
+                while (args.Contains("\u001f\u001f")) args = args.Replace("\u001f\u001f", "");
+                args = args.Replace("\u001f", "\"");
+
+                // 2. Standard replacements for standalone placeholders
+                args = args.Replace("{file}", $"\"{file}\"")
+                           .Replace("$file", $"\"{file}\"")
+                           .Replace("$dt", stamp);
 
                 await RunProcessAsync(config.ExecutablePath, args);
             }
@@ -451,7 +475,7 @@ public partial class Form1 : Form
 
             var lblTip = new Label 
             { 
-                Text = "Tip: Use $file for path and $dt for timestamp. Example: $file_$dt", 
+                Text = "Tip: Use $file for path and $dt for stamp. Join with + to fix quoting: $file+$dt", 
                 ForeColor = Color.DimGray,
                 Font = new Font(this.Font.FontFamily, 8),
                 Dock = DockStyle.Fill,

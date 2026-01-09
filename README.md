@@ -1,0 +1,1 @@
+an empty .NET 8 Windows Forms project (`MySimpleApp`).

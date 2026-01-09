@@ -14,7 +14,6 @@ public partial class Form1 : Form
     private ListBox _fileListBox = null!;
     private FlowLayoutPanel _commandDeck = null!;
     private RichTextBox _logConsole = null!;
-    private Button _btnAddFiles = null!;
     private bool _isEditMode = false;
 
     public Form1()
@@ -27,10 +26,10 @@ public partial class Form1 : Form
     private void SetupCustomUI()
     {
         this.Text = "MySimpleApp - Command Runner";
-        this.Size = new Size(1000, 700);
-        this.MinimumSize = new Size(600, 400);
+        this.Size = new Size(1100, 850); // Larger default to accommodate taller log
+        this.MinimumSize = new Size(700, 600);
 
-        // 1. MenuStrip (Directly on Form)
+        // 1. MenuStrip
         _menuStrip = new MenuStrip();
         
         // Configuration Menu
@@ -48,65 +47,44 @@ public partial class Form1 : Form
         configMenu.DropDownItems.Add(new ToolStripSeparator());
         configMenu.DropDownItems.Add("Save Settings", null, (s, e) => SaveCommands());
         
-        // Quick Action: Clear List (Positioned right after Configuration)
+        // Quick Action: Add Files (Same design as Clear List)
+        var addFilesMenu = new ToolStripMenuItem("Add Files", null, (s, e) => AddFiles());
+        addFilesMenu.ForeColor = Color.FromArgb(70, 130, 180); // Consistent SteelBlue
+        addFilesMenu.Font = new Font(_menuStrip.Font, FontStyle.Bold);
+
+        // Quick Action: Clear List
         var clearListItem = new ToolStripMenuItem("Clear List", null, (s, e) => _fileListBox.Items.Clear());
         clearListItem.ForeColor = Color.Maroon;
 
         _menuStrip.Items.Add(configMenu);
+        _menuStrip.Items.Add(addFilesMenu);
         _menuStrip.Items.Add(clearListItem);
         this.Controls.Add(_menuStrip);
         this.MainMenuStrip = _menuStrip;
 
-        // 2. Log Console (Bottom of Form)
+        // 2. SplitContainer
+        _splitContainer = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Vertical,
+            SplitterDistance = 400 // Slightly wider to make the log more readable
+        };
+        this.Controls.Add(_splitContainer);
+        _splitContainer.SendToBack();
+
+        // 3. Log Console (Now in Panel1, aligned with File List)
         _logConsole = new RichTextBox
         {
             Dock = DockStyle.Bottom,
-            Height = 150,
+            Height = 310, // Twice as tall (was 150)
             ReadOnly = true,
             BackColor = Color.Black,
             ForeColor = Color.LightGray,
             Font = new Font("Consolas", 9),
             BorderStyle = BorderStyle.None
         };
-        this.Controls.Add(_logConsole);
 
-        // 3. SplitContainer (Fill remaining space)
-        _splitContainer = new SplitContainer
-        {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 300
-        };
-        this.Controls.Add(_splitContainer);
-        
-        // CRITICAL: Ensure the Fill control is at the back of the Z-order
-        // This ensures it stays BETWEEN the docked Menu (Top) and Console (Bottom)
-        _splitContainer.SendToBack();
-
-        // Left Panel (File Staging - Using TableLayoutPanel for precision)
-        var leftLayout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            RowCount = 2,
-            ColumnCount = 1,
-            Padding = new Padding(5)
-        };
-        leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 55)); // Comfortable height for the button
-        leftLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Remaining space for list
-        
-        _btnAddFiles = new Button
-        {
-            Text = "+ Add Files",
-            Size = new Size(180, 40), // Premium fixed size
-            Anchor = AnchorStyles.None, // Centers the button in the cell
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(70, 130, 180), // SteelBlue
-            ForeColor = Color.White,
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            Cursor = Cursors.Hand
-        };
-        _btnAddFiles.Click += (s, e) => AddFiles();
-        
+        // 4. File List (Panel 1)
         _fileListBox = new ListBox
         {
             Dock = DockStyle.Fill,
@@ -123,9 +101,9 @@ public partial class Form1 : Form
         listContextMenu.Items.Add("Clear All", null, (s, e) => _fileListBox.Items.Clear());
         _fileListBox.ContextMenuStrip = listContextMenu;
         
-        leftLayout.Controls.Add(_btnAddFiles, 0, 0);
-        leftLayout.Controls.Add(_fileListBox, 0, 1);
-        _splitContainer.Panel1.Controls.Add(leftLayout);
+        // Add components to Left Panel
+        _splitContainer.Panel1.Controls.Add(_fileListBox);
+        _splitContainer.Panel1.Controls.Add(_logConsole); // Log sits strictly under the files
 
         // Right Panel (Command Deck)
         _commandDeck = new FlowLayoutPanel

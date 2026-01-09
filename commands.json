@@ -1,7 +1,22 @@
 [
   {
-    "Name": "check",
+    "Name": "CHECK VALID",
     "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
     "Arguments": "-d"
+  },
+  {
+    "Name": "Clear worflow",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-Workflow= -Prompt= -overwrite_original"
+  },
+  {
+    "Name": "Clear all metadata",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-all= -overwrite_original"
+  },
+  {
+    "Name": "Check metadata",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-G1 -a -s"
   }
 ]

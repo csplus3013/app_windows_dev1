@@ -9,13 +9,14 @@ using System.Windows.Forms;
 using System.IO;
 using System.Text.Json;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 
 namespace MySimpleApp;
 
 public partial class Form1 : Form
 {
     private readonly List<CommandConfig> _commands = new();
-    private readonly string ConfigFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "commands.json");
+    private const string ConfigFileName = "commands.json";
     private readonly List<Process> _activeProcesses = new();
     private readonly object _processLock = new();
     
@@ -24,6 +25,10 @@ public partial class Form1 : Form
     private bool _isLogPaused = false;
     private struct LogEntry { public string Message; public Color? Color; public bool IsBold; }
     private readonly List<LogEntry> _logBuffer = new();
+    private readonly ConcurrentQueue<LogEntry> _pendingLogs = new();
+    private readonly System.Windows.Forms.Timer _logFlushTimer;
+    private const int MaxLogLines = 100000;
+    private const int MaxLinesPerBatch = 500;
 
     // UI Controls
     private MenuStrip _menuStrip = null!;
@@ -36,6 +41,11 @@ public partial class Form1 : Form
     public Form1()
     {
         InitializeComponent();
+        
+        _logFlushTimer = new System.Windows.Forms.Timer { Interval = 100 };
+        _logFlushTimer.Tick += (s, e) => BatchFlushLog();
+        _logFlushTimer.Start();
+
         SetupCustomUI();
         LoadCommands();
     }
@@ -413,44 +423,79 @@ public partial class Form1 : Form
     {
         if (!_isLogEnabled) return;
 
-        if (_isLogPaused)
+        var entry = new LogEntry 
+        { 
+            Message = $"[{DateTime.Now:HH:mm:ss}] {message}", 
+            Color = color, 
+            IsBold = isBold 
+        };
+
+        // Use lock to prevent race condition during unpausing
+        lock (_logBuffer)
         {
-            lock (_logBuffer)
+            if (_isLogPaused)
             {
-                _logBuffer.Add(new LogEntry { Message = message, Color = color, IsBold = isBold });
+                _logBuffer.Add(entry);
+                return;
             }
-            return;
         }
 
-        if (_logConsole.InvokeRequired)
+        _pendingLogs.Enqueue(entry);
+    }
+
+    private void BatchFlushLog()
+    {
+        if (_pendingLogs.IsEmpty || _logConsole.IsDisposed) return;
+
+        // Temporarily stop redrawing to boost performance
+        _logConsole.SuspendLayout();
+        try
         {
-            _logConsole.Invoke(new Action(() => Log(message, color, isBold)));
-            return;
+            int linesProcessed = 0;
+            while (linesProcessed < MaxLinesPerBatch && _pendingLogs.TryDequeue(out var entry))
+            {
+                linesProcessed++;
+                Color textColor = entry.Color ?? Color.LightGray;
+                bool bold = entry.IsBold;
+
+                // Auto-detect errors if not explicitly colored
+                if (entry.Color == null && (entry.Message.Contains("Error:") || entry.Message.Contains("[ERR]")))
+                {
+                    textColor = Color.Red;
+                    bold = true;
+                }
+
+                _logConsole.SelectionStart = _logConsole.TextLength;
+                _logConsole.SelectionLength = 0;
+                _logConsole.SelectionColor = textColor;
+                _logConsole.SelectionFont = new Font(_logConsole.Font, bold ? FontStyle.Bold : FontStyle.Regular);
+                
+                _logConsole.AppendText(entry.Message + Environment.NewLine);
+            }
+
+            // Keep the log length manageable (trim from top)
+            // Use a faster way to count lines and only trim when significantly over
+            int currentLineCount = _logConsole.GetLineFromCharIndex(_logConsole.TextLength) + 1;
+            if (currentLineCount > MaxLogLines + 1000)
+            {
+                int linesToRemove = currentLineCount - MaxLogLines;
+                int charsToRemove = _logConsole.GetFirstCharIndexFromLine(linesToRemove);
+                if (charsToRemove > 0)
+                {
+                    _logConsole.ReadOnly = false;
+                    _logConsole.Select(0, charsToRemove);
+                    _logConsole.SelectedText = "";
+                    _logConsole.ReadOnly = true;
+                }
+            }
+
+            _logConsole.SelectionStart = _logConsole.TextLength;
+            _logConsole.ScrollToCaret();
         }
-
-        // Default color if none specified
-        Color textColor = color ?? Color.LightGray;
-
-        // Auto-detect errors if not explicitly colored
-        if (color == null && (message.Contains("Error:") || message.StartsWith("[ERR]")))
+        finally
         {
-            textColor = Color.Red;
-            isBold = true;
+            _logConsole.ResumeLayout();
         }
-
-        _logConsole.SelectionStart = _logConsole.TextLength;
-        _logConsole.SelectionLength = 0;
-        _logConsole.SelectionColor = textColor;
-        
-        if (isBold)
-            _logConsole.SelectionFont = new Font(_logConsole.Font, FontStyle.Bold);
-        else
-            _logConsole.SelectionFont = new Font(_logConsole.Font, FontStyle.Regular);
-
-        _logConsole.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
-        
-        _logConsole.SelectionStart = _logConsole.TextLength;
-        _logConsole.ScrollToCaret();
     }
 
     private void FlushLogBuffer()
@@ -459,7 +504,7 @@ public partial class Form1 : Form
         {
             foreach (var entry in _logBuffer)
             {
-                Log(entry.Message, entry.Color, entry.IsBold);
+                _pendingLogs.Enqueue(entry);
             }
             _logBuffer.Clear();
         }
@@ -484,17 +529,24 @@ public partial class Form1 : Form
         {
             var json = JsonSerializer.Serialize(_commands, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(ConfigFileName, json);
-            Log("Settings saved successfully.");
+            Log("Settings saved successfully.", Color.LimeGreen, true);
         }
         catch (Exception ex)
         {
-            Log($"Error saving settings: {ex.Message}");
+            Log($"Error saving settings: {ex.Message}", Color.Red, true);
         }
     }
 
     private void LoadCommands()
     {
-        if (!File.Exists(ConfigFileName)) return;
+        string fullPath = Path.GetFullPath(ConfigFileName);
+        Log($"Loading config from: {fullPath}");
+
+        if (!File.Exists(ConfigFileName))
+        {
+            Log("No commands.json found. You can add new commands via the Configuration menu.");
+            return;
+        }
 
         try
         {
@@ -509,11 +561,12 @@ public partial class Form1 : Form
                     _commands.Add(cmd);
                     CreateCommandButton(cmd);
                 }
+                Log($"Loaded {commands.Count} commands.", Color.LimeGreen, true);
             }
         }
         catch (Exception ex)
         {
-            Log($"Error loading settings: {ex.Message}");
+            Log($"Error loading settings: {ex.Message}", Color.Red, true);
         }
     }
 

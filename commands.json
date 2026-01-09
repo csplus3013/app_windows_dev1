@@ -1,5 +1,10 @@
 [
   {
+    "Name": "CHECK FILE TYPE",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": " -FileType -b $file"
+  },
+  {
     "Name": "CHECK c2pa VALID ",
     "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
     "Arguments": "-d $file"

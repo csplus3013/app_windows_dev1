@@ -15,7 +15,15 @@ namespace MySimpleApp;
 public partial class Form1 : Form
 {
     private readonly List<CommandConfig> _commands = new();
-    private const string ConfigFileName = "commands.json";
+    private readonly string ConfigFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "commands.json");
+    private readonly List<Process> _activeProcesses = new();
+    private readonly object _processLock = new();
+    
+    // Logging State
+    private bool _isLogEnabled = true;
+    private bool _isLogPaused = false;
+    private struct LogEntry { public string Message; public Color? Color; public bool IsBold; }
+    private readonly List<LogEntry> _logBuffer = new();
 
     // UI Controls
     private MenuStrip _menuStrip = null!;
@@ -95,13 +103,14 @@ public partial class Form1 : Form
         var leftTable = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            RowCount = 3,
+            RowCount = 4, // Increased for Log Controls
             ColumnCount = 1,
-            Padding = new Padding(10, 20, 10, 10) // Increased top padding to 20
+            Padding = new Padding(10, 20, 10, 10)
         };
-        leftTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));    // Header label
-        leftTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // File List
-        leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 320)); // Log Console area
+        leftTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));    // 0: Header label
+        leftTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // 1: File List
+        leftTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));    // 2: Log Controls
+        leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 320)); // 3: Log Console area
 
         var lblFiles = new Label 
         { 
@@ -130,7 +139,29 @@ public partial class Form1 : Form
         listContextMenu.Items.Add("Clear All", null, (s, e) => _fileListBox.Items.Clear());
         _fileListBox.ContextMenuStrip = listContextMenu;
 
-        // 5. Log Console
+        // 5. Log Controls
+        var logControls = new FlowLayoutPanel 
+        { 
+            Dock = DockStyle.Fill, 
+            AutoSize = true, 
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = new Padding(0, 5, 0, 0)
+        };
+        
+        var chkEnableLog = new CheckBox { Text = "Enable Log", Checked = true, AutoSize = true };
+        chkEnableLog.CheckedChanged += (s, e) => _isLogEnabled = chkEnableLog.Checked;
+        
+        var chkPauseLog = new CheckBox { Text = "Pause Log", Checked = false, AutoSize = true };
+        chkPauseLog.CheckedChanged += (s, e) => 
+        {
+            _isLogPaused = chkPauseLog.Checked;
+            if (!_isLogPaused) FlushLogBuffer();
+        };
+        
+        logControls.Controls.Add(chkEnableLog);
+        logControls.Controls.Add(chkPauseLog);
+
+        // 6. Log Console
         _logConsole = new RichTextBox
         {
             Dock = DockStyle.Fill,
@@ -149,7 +180,8 @@ public partial class Form1 : Form
         
         leftTable.Controls.Add(lblFiles, 0, 0);
         leftTable.Controls.Add(_fileListBox, 0, 1);
-        leftTable.Controls.Add(_logConsole, 0, 2);
+        leftTable.Controls.Add(logControls, 0, 2);
+        leftTable.Controls.Add(_logConsole, 0, 3);
         
         _splitContainer.Panel1.Controls.Add(leftTable);
 
@@ -162,6 +194,8 @@ public partial class Form1 : Form
             BackColor = Color.WhiteSmoke
         };
         _splitContainer.Panel2.Controls.Add(_commandDeck);
+
+        this.FormClosing += (s, e) => CleanupProcesses();
     }
 
     private void AddFiles()
@@ -277,19 +311,19 @@ public partial class Form1 : Form
     {
         if (!File.Exists(config.ExecutablePath))
         {
-            Log($"Error: Executable not found at '{config.ExecutablePath}'");
+            Log($"Error: Executable not found at '{config.ExecutablePath}'", Color.Red, true);
             return;
         }
 
         var files = _fileListBox.Items.Cast<string>().ToList();
-        Log($"--- Starting execution: {config.Name} ---");
+        Log($"--- Starting execution: {config.Name} ---", Color.LightSkyBlue, true);
 
         if (files.Count == 0)
         {
-            // Check if arguments contain {file} placeholder
-            if (config.Arguments.Contains("{file}"))
+            // Check if arguments contain placeholder
+            if (config.Arguments.Contains("{file}") || config.Arguments.Contains("$file"))
             {
-                Log("Error: This command requires files but the staging area is empty.");
+                Log("Error: This command requires files but the staging area is empty.", Color.Red, true);
             }
             else
             {
@@ -300,8 +334,14 @@ public partial class Form1 : Form
         else
         {
             string stamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+            int current = 0;
+            int total = files.Count;
+
             foreach (var file in files)
             {
+                current++;
+                Log($"========== {current} of {total} ==========", Color.Gold, true);
+                
                 string args = config.Arguments;
 
                 // 1. Smart Conjunction Logic:
@@ -327,7 +367,7 @@ public partial class Form1 : Form
             }
         }
 
-        Log($"--- Finished: {config.Name} ---");
+        Log($"--- Finished: {config.Name} ---", Color.LimeGreen, true);
     }
 
     private async Task RunProcessAsync(string exe, string args)
@@ -349,31 +389,93 @@ public partial class Form1 : Form
                     };
 
                 using var process = new Process { StartInfo = startInfo };
+                
+                lock (_processLock) { _activeProcesses.Add(process); }
+
                 process.OutputDataReceived += (s, e) => { if (e.Data != null) Log($"[OUT] {e.Data}"); };
-                process.ErrorDataReceived += (s, e) => { if (e.Data != null) Log($"[ERR] {e.Data}"); };
+                process.ErrorDataReceived += (s, e) => { if (e.Data != null) Log($"[ERR] {e.Data}", Color.Red, true); };
 
                 process.Start();
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
                 process.WaitForExit();
+
+                lock (_processLock) { _activeProcesses.Remove(process); }
             }
             catch (Exception ex)
             {
-                Log($"Exception: {ex.Message}");
+                Log($"Exception: {ex.Message}", Color.Red, true);
             }
         });
     }
 
-    private void Log(string message)
+    private void Log(string message, Color? color = null, bool isBold = false)
     {
-        if (_logConsole.InvokeRequired)
+        if (!_isLogEnabled) return;
+
+        if (_isLogPaused)
         {
-            _logConsole.Invoke(new Action(() => Log(message)));
+            lock (_logBuffer)
+            {
+                _logBuffer.Add(new LogEntry { Message = message, Color = color, IsBold = isBold });
+            }
             return;
         }
+
+        if (_logConsole.InvokeRequired)
+        {
+            _logConsole.Invoke(new Action(() => Log(message, color, isBold)));
+            return;
+        }
+
+        // Default color if none specified
+        Color textColor = color ?? Color.LightGray;
+
+        // Auto-detect errors if not explicitly colored
+        if (color == null && (message.Contains("Error:") || message.StartsWith("[ERR]")))
+        {
+            textColor = Color.Red;
+            isBold = true;
+        }
+
+        _logConsole.SelectionStart = _logConsole.TextLength;
+        _logConsole.SelectionLength = 0;
+        _logConsole.SelectionColor = textColor;
+        
+        if (isBold)
+            _logConsole.SelectionFont = new Font(_logConsole.Font, FontStyle.Bold);
+        else
+            _logConsole.SelectionFont = new Font(_logConsole.Font, FontStyle.Regular);
+
         _logConsole.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
-        _logConsole.SelectionStart = _logConsole.Text.Length;
+        
+        _logConsole.SelectionStart = _logConsole.TextLength;
         _logConsole.ScrollToCaret();
+    }
+
+    private void FlushLogBuffer()
+    {
+        lock (_logBuffer)
+        {
+            foreach (var entry in _logBuffer)
+            {
+                Log(entry.Message, entry.Color, entry.IsBold);
+            }
+            _logBuffer.Clear();
+        }
+    }
+
+    private void CleanupProcesses()
+    {
+        lock (_processLock)
+        {
+            foreach (var p in _activeProcesses)
+            {
+                try { if (!p.HasExited) p.Kill(true); } 
+                catch { /* Ignore errors on cleanup */ }
+            }
+            _activeProcesses.Clear();
+        }
     }
 
     private void SaveCommands()

@@ -29,8 +29,17 @@ public partial class Form1 : Form
         this.Text = "MySimpleApp - Command Runner";
         this.Size = new Size(1000, 700);
 
-        // MenuStrip
+        // Main Container Panel to host everything
+        var mainContainer = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(0)
+        };
+        this.Controls.Add(mainContainer);
+
+        // MenuStrip (Added to mainContainer first to dock at top)
         _menuStrip = new MenuStrip();
+        _menuStrip.Dock = DockStyle.Top;
         var configMenu = new ToolStripMenuItem("Configuration");
         configMenu.DropDownItems.Add("Add New Command", null, (s, e) => ShowAddCommandDialog());
         configMenu.DropDownItems.Add("Clear File List", null, (s, e) => _fileListBox.Items.Clear());
@@ -46,10 +55,10 @@ public partial class Form1 : Form
 
         configMenu.DropDownItems.Add("Save Settings", null, (s, e) => SaveCommands());
         _menuStrip.Items.Add(configMenu);
+        mainContainer.Controls.Add(_menuStrip);
         this.MainMenuStrip = _menuStrip;
-        this.Controls.Add(_menuStrip);
 
-        // Log Console (Bottom)
+        // Log Console (Bottom of Main Container)
         _logConsole = new RichTextBox
         {
             Dock = DockStyle.Bottom,
@@ -59,16 +68,16 @@ public partial class Form1 : Form
             ForeColor = Color.LightGray,
             Font = new Font("Consolas", 9)
         };
-        this.Controls.Add(_logConsole);
+        mainContainer.Controls.Add(_logConsole);
 
-        // SplitContainer
+        // SplitContainer (Fill remaining Main Container)
         _splitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
             SplitterDistance = 300
         };
-        this.Controls.Add(_splitContainer);
+        mainContainer.Controls.Add(_splitContainer);
 
         // Left Panel (File Staging)
         var leftPanel = new Panel { Dock = DockStyle.Fill };
@@ -76,8 +85,10 @@ public partial class Form1 : Form
         {
             Text = "Add Files",
             Dock = DockStyle.Top,
-            Height = 40,
-            FlatStyle = FlatStyle.Flat
+            Height = 45,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Color.LightSteelBlue,
+            Font = new Font(this.Font, FontStyle.Bold)
         };
         _btnAddFiles.Click += (s, e) => AddFiles();
         
@@ -135,7 +146,7 @@ public partial class Form1 : Form
             Height = 60,
             FlatStyle = FlatStyle.Flat,
             Margin = new Padding(5),
-            BackColor = _isEditMode ? Color.MistyRose : Color.Transparent,
+            BackColor = _isEditMode ? Color.MistyRose : Color.AliceBlue,
             Tag = config
         };
 
@@ -147,7 +158,19 @@ public partial class Form1 : Form
             }
             else
             {
-                await ExecuteCommandAsync(config);
+                // Disable button during execution to prevent accidental loops/multiple clicks
+                var originalColor = btn.BackColor;
+                btn.Enabled = false;
+                btn.BackColor = Color.LightGray;
+                try
+                {
+                    await ExecuteCommandAsync(config);
+                }
+                finally
+                {
+                    btn.Enabled = true;
+                    btn.BackColor = originalColor;
+                }
             }
         };
         _commandDeck.Controls.Add(btn);
@@ -199,8 +222,16 @@ public partial class Form1 : Form
 
         if (files.Count == 0)
         {
-            // Execute once without file replacement if no files selected
-            await RunProcessAsync(config.ExecutablePath, config.Arguments.Replace("{file}", ""));
+            // Check if arguments contain {file} placeholder
+            if (config.Arguments.Contains("{file}"))
+            {
+                Log("Error: This command requires files but the staging area is empty.");
+            }
+            else
+            {
+                // Execute once without file replacement if no files selected and no placeholder
+                await RunProcessAsync(config.ExecutablePath, config.Arguments);
+            }
         }
         else
         {

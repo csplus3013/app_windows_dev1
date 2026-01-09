@@ -1,7 +1,7 @@
 [
   {
     "Name": "check",
-    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "--help"
+    "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
+    "Arguments": "-d"
   }
 ]

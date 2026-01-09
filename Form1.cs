@@ -85,10 +85,13 @@ public partial class Form1 : Form
         {
             Text = "Add Files",
             Dock = DockStyle.Top,
-            Height = 45,
+            Height = 50,
             FlatStyle = FlatStyle.Flat,
-            BackColor = Color.LightSteelBlue,
-            Font = new Font(this.Font, FontStyle.Bold)
+            BackColor = Color.FromArgb(70, 130, 180), // SteelBlue
+            ForeColor = Color.White,
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Cursor = Cursors.Hand,
+            Margin = new Padding(0, 0, 0, 10)
         };
         _btnAddFiles.Click += (s, e) => AddFiles();
         
@@ -98,8 +101,13 @@ public partial class Form1 : Form
             SelectionMode = SelectionMode.MultiExtended
         };
         
-        leftPanel.Controls.Add(_fileListBox);
+        // Fix: Add the button FIRST to the container to ensure it stays at the top of the docking stack
         leftPanel.Controls.Add(_btnAddFiles);
+        leftPanel.Controls.Add(_fileListBox);
+        
+        // Add some padding to the panel to avoid squashed look
+        leftPanel.Padding = new Padding(5);
+
         _splitContainer.Panel1.Controls.Add(leftPanel);
 
         // Right Panel (Command Deck)
@@ -237,7 +245,19 @@ public partial class Form1 : Form
         {
             foreach (var file in files)
             {
-                var args = config.Arguments.Replace("{file}", $"\"{file}\"");
+                string args;
+                if (config.Arguments.Contains("{file}"))
+                {
+                    args = config.Arguments.Replace("{file}", $"\"{file}\"");
+                }
+                else
+                {
+                    // Smart fallback: If no placeholder but files are selected, append file path
+                    args = string.IsNullOrWhiteSpace(config.Arguments) 
+                        ? $"\"{file}\"" 
+                        : $"{config.Arguments} \"{file}\"";
+                    Log($"Hint: No {{file}} placeholder found in arguments. Appending file path automatically.");
+                }
                 await RunProcessAsync(config.ExecutablePath, args);
             }
         }
@@ -357,11 +377,11 @@ public partial class Form1 : Form
         private void SetupUI(bool isEditing)
         {
             this.Text = "Add New Command";
-            this.Size = new Size(500, 280);
+            this.Size = new Size(500, 320); // Increased height for tip label
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.StartPosition = FormStartPosition.CenterParent;
 
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(10), RowCount = 4, ColumnCount = 3 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(10), RowCount = 5, ColumnCount = 3 };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
@@ -388,6 +408,17 @@ public partial class Form1 : Form
             layout.Controls.Add(_txtArgs, 1, 2);
             layout.SetColumnSpan(_txtArgs, 2);
 
+            var lblTip = new Label 
+            { 
+                Text = "Tip: Use {file} to inject the path of each selected file. If omitted, paths are automatically appended.", 
+                ForeColor = Color.DimGray,
+                Font = new Font(this.Font.FontFamily, 8),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.TopLeft
+            };
+            layout.Controls.Add(lblTip, 1, 3);
+            layout.SetColumnSpan(lblTip, 2);
+
             var panelButtons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
             var btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
             btnOk.Click += (s, e) =>
@@ -408,7 +439,7 @@ public partial class Form1 : Form
                 panelButtons.Controls.Add(btnDelete);
             }
             
-            layout.Controls.Add(panelButtons, 1, 3);
+            layout.Controls.Add(panelButtons, 1, 4);
             layout.SetColumnSpan(panelButtons, 2);
 
             this.Controls.Add(layout);

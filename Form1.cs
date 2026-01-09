@@ -28,21 +28,14 @@ public partial class Form1 : Form
     {
         this.Text = "MySimpleApp - Command Runner";
         this.Size = new Size(1000, 700);
+        this.MinimumSize = new Size(600, 400);
 
-        // Main Container Panel to host everything
-        var mainContainer = new Panel
-        {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(0)
-        };
-        this.Controls.Add(mainContainer);
-
-        // MenuStrip (Added to mainContainer first to dock at top)
+        // 1. MenuStrip (Directly on Form)
         _menuStrip = new MenuStrip();
-        _menuStrip.Dock = DockStyle.Top;
+        
+        // Configuration Menu
         var configMenu = new ToolStripMenuItem("Configuration");
         configMenu.DropDownItems.Add("Add New Command", null, (s, e) => ShowAddCommandDialog());
-        configMenu.DropDownItems.Add("Clear File List", null, (s, e) => _fileListBox.Items.Clear());
         
         var editModeItem = new ToolStripMenuItem("Edit Mode Toggle") { CheckOnClick = true };
         editModeItem.CheckedChanged += (s, e) =>
@@ -52,13 +45,19 @@ public partial class Form1 : Form
             RefreshCommandDeck();
         };
         configMenu.DropDownItems.Add(editModeItem);
-
+        configMenu.DropDownItems.Add(new ToolStripSeparator());
         configMenu.DropDownItems.Add("Save Settings", null, (s, e) => SaveCommands());
+        
+        // Quick Action: Clear List (Positioned right after Configuration)
+        var clearListItem = new ToolStripMenuItem("Clear List", null, (s, e) => _fileListBox.Items.Clear());
+        clearListItem.ForeColor = Color.Maroon;
+
         _menuStrip.Items.Add(configMenu);
-        mainContainer.Controls.Add(_menuStrip);
+        _menuStrip.Items.Add(clearListItem);
+        this.Controls.Add(_menuStrip);
         this.MainMenuStrip = _menuStrip;
 
-        // Log Console (Bottom of Main Container)
+        // 2. Log Console (Bottom of Form)
         _logConsole = new RichTextBox
         {
             Dock = DockStyle.Bottom,
@@ -66,56 +65,75 @@ public partial class Form1 : Form
             ReadOnly = true,
             BackColor = Color.Black,
             ForeColor = Color.LightGray,
-            Font = new Font("Consolas", 9)
+            Font = new Font("Consolas", 9),
+            BorderStyle = BorderStyle.None
         };
-        mainContainer.Controls.Add(_logConsole);
+        this.Controls.Add(_logConsole);
 
-        // SplitContainer (Fill remaining Main Container)
+        // 3. SplitContainer (Fill remaining space)
         _splitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
             SplitterDistance = 300
         };
-        mainContainer.Controls.Add(_splitContainer);
+        this.Controls.Add(_splitContainer);
+        
+        // CRITICAL: Ensure the Fill control is at the back of the Z-order
+        // This ensures it stays BETWEEN the docked Menu (Top) and Console (Bottom)
+        _splitContainer.SendToBack();
 
-        // Left Panel (File Staging)
-        var leftPanel = new Panel { Dock = DockStyle.Fill };
+        // Left Panel (File Staging - Using TableLayoutPanel for precision)
+        var leftLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            RowCount = 2,
+            ColumnCount = 1,
+            Padding = new Padding(5)
+        };
+        leftLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 55)); // Comfortable height for the button
+        leftLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Remaining space for list
+        
         _btnAddFiles = new Button
         {
-            Text = "Add Files",
-            Dock = DockStyle.Top,
-            Height = 50,
+            Text = "+ Add Files",
+            Size = new Size(180, 40), // Premium fixed size
+            Anchor = AnchorStyles.None, // Centers the button in the cell
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.FromArgb(70, 130, 180), // SteelBlue
             ForeColor = Color.White,
             Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            Cursor = Cursors.Hand,
-            Margin = new Padding(0, 0, 0, 10)
+            Cursor = Cursors.Hand
         };
         _btnAddFiles.Click += (s, e) => AddFiles();
         
         _fileListBox = new ListBox
         {
             Dock = DockStyle.Fill,
-            SelectionMode = SelectionMode.MultiExtended
+            SelectionMode = SelectionMode.MultiExtended,
+            IntegralHeight = false,
+            BorderStyle = BorderStyle.FixedSingle,
+            Font = new Font("Segoe UI", 9)
         };
-        
-        // Fix: Add the button FIRST to the container to ensure it stays at the top of the docking stack
-        leftPanel.Controls.Add(_btnAddFiles);
-        leftPanel.Controls.Add(_fileListBox);
-        
-        // Add some padding to the panel to avoid squashed look
-        leftPanel.Padding = new Padding(5);
 
-        _splitContainer.Panel1.Controls.Add(leftPanel);
+        // Context Menu for ListBox
+        var listContextMenu = new ContextMenuStrip();
+        listContextMenu.Items.Add("Remove Selected", null, (s, e) => RemoveSelectedFiles());
+        listContextMenu.Items.Add(new ToolStripSeparator());
+        listContextMenu.Items.Add("Clear All", null, (s, e) => _fileListBox.Items.Clear());
+        _fileListBox.ContextMenuStrip = listContextMenu;
+        
+        leftLayout.Controls.Add(_btnAddFiles, 0, 0);
+        leftLayout.Controls.Add(_fileListBox, 0, 1);
+        _splitContainer.Panel1.Controls.Add(leftLayout);
 
         // Right Panel (Command Deck)
         _commandDeck = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoScroll = true,
-            Padding = new Padding(10)
+            Padding = new Padding(10),
+            BackColor = Color.WhiteSmoke
         };
         _splitContainer.Panel2.Controls.Add(_commandDeck);
     }
@@ -150,11 +168,12 @@ public partial class Form1 : Form
         var btn = new Button
         {
             Text = config.Name,
-            Width = 150,
-            Height = 60,
+            Width = 140, // Slightly narrower for better tiling
+            Height = 50, // Slightly shorter for better tiling
             FlatStyle = FlatStyle.Flat,
-            Margin = new Padding(5),
+            Margin = new Padding(8), // Increased margin for visual breathing room
             BackColor = _isEditMode ? Color.MistyRose : Color.AliceBlue,
+            Font = new Font("Segoe UI", 9, FontStyle.Regular),
             Tag = config
         };
 
@@ -186,10 +205,21 @@ public partial class Form1 : Form
 
     private void RefreshCommandDeck()
     {
+        _commandDeck.SuspendLayout(); // Performance boost
         _commandDeck.Controls.Clear();
         foreach (var cmd in _commands)
         {
             CreateCommandButton(cmd);
+        }
+        _commandDeck.ResumeLayout();
+    }
+
+    private void RemoveSelectedFiles()
+    {
+        var selectedItems = _fileListBox.SelectedItems.Cast<object>().ToList();
+        foreach (var item in selectedItems)
+        {
+            _fileListBox.Items.Remove(item);
         }
     }
 

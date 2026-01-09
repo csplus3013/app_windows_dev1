@@ -292,19 +292,11 @@ public partial class Form1 : Form
         {
             foreach (var file in files)
             {
-                string args;
-                if (config.Arguments.Contains("{file}"))
-                {
-                    args = config.Arguments.Replace("{file}", $"\"{file}\"");
-                }
-                else
-                {
-                    // Smart fallback: If no placeholder but files are selected, append file path
-                    args = string.IsNullOrWhiteSpace(config.Arguments) 
-                        ? $"\"{file}\"" 
-                        : $"{config.Arguments} \"{file}\"";
-                    Log($"Hint: No {{file}} placeholder found in arguments. Appending file path automatically.");
-                }
+                // Unconditionally replace placeholders. If none exist, the command runs as defined.
+                string args = config.Arguments
+                    .Replace("{file}", $"\"{file}\"")
+                    .Replace("$file", $"\"{file}\"");
+
                 await RunProcessAsync(config.ExecutablePath, args);
             }
         }
@@ -457,7 +449,7 @@ public partial class Form1 : Form
 
             var lblTip = new Label 
             { 
-                Text = "Tip: Use {file} to inject the path of each selected file. If omitted, paths are automatically appended.", 
+                Text = "Tip: You MUST use $file to place the path. It will NOT be appended automatically.", 
                 ForeColor = Color.DimGray,
                 Font = new Font(this.Font.FontFamily, 8),
                 Dock = DockStyle.Fill,

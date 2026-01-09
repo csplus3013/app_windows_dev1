@@ -2,21 +2,26 @@
   {
     "Name": "CHECK c2pa VALID ",
     "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
-    "Arguments": "-d"
+    "Arguments": "-d $file"
+  },
+  {
+    "Name": "APPLY C2PA",
+    "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
+    "Arguments": "-m d:\\soft\\c2patool\\my_manifest_image.json  $file -o $file --no_signing_verify -f"
   },
   {
     "Name": "CHECK DATA",
     "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "-G1 -a -s"
+    "Arguments": "-G1 -a -s $file"
   },
   {
     "Name": "Clear all metadata",
     "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "-all= -overwrite_original"
+    "Arguments": "-all= -overwrite_original $file"
   },
   {
     "Name": "Clear Flux data",
     "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "-Workflow= -Prompt= -overwrite_original"
+    "Arguments": "-Workflow= -Prompt= -overwrite_original $file"
   }
 ]

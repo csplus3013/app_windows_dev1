@@ -290,12 +290,14 @@ public partial class Form1 : Form
         }
         else
         {
+            string stamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
             foreach (var file in files)
             {
-                // Unconditionally replace placeholders. If none exist, the command runs as defined.
+                // Unconditionally replace placeholders.
                 string args = config.Arguments
                     .Replace("{file}", $"\"{file}\"")
-                    .Replace("$file", $"\"{file}\"");
+                    .Replace("$file", $"\"{file}\"")
+                    .Replace("$dt", stamp);
 
                 await RunProcessAsync(config.ExecutablePath, args);
             }
@@ -449,7 +451,7 @@ public partial class Form1 : Form
 
             var lblTip = new Label 
             { 
-                Text = "Tip: You MUST use $file to place the path. It will NOT be appended automatically.", 
+                Text = "Tip: Use $file for path and $dt for timestamp. Example: $file_$dt", 
                 ForeColor = Color.DimGray,
                 Font = new Font(this.Font.FontFamily, 8),
                 Dock = DockStyle.Fill,

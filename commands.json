@@ -1,13 +1,13 @@
 [
   {
-    "Name": "CHECK VALID",
+    "Name": "CHECK c2pa VALID ",
     "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
     "Arguments": "-d"
   },
   {
-    "Name": "Clear worflow",
+    "Name": "CHECK DATA",
     "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "-Workflow= -Prompt= -overwrite_original"
+    "Arguments": "-G1 -a -s"
   },
   {
     "Name": "Clear all metadata",
@@ -15,8 +15,8 @@
     "Arguments": "-all= -overwrite_original"
   },
   {
-    "Name": "Check metadata",
+    "Name": "Clear Flux data",
     "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "-G1 -a -s"
+    "Arguments": "-Workflow= -Prompt= -overwrite_original"
   }
 ]

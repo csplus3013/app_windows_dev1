@@ -30,7 +30,12 @@ public partial class Form1 : Form
         this.MinimumSize = new Size(700, 600);
 
         // 1. MenuStrip
-        _menuStrip = new MenuStrip();
+        _menuStrip = new MenuStrip
+        {
+            BackColor = Color.White,
+            RenderMode = ToolStripRenderMode.Professional,
+            Padding = new Padding(5, 2, 0, 2)
+        };
         
         // Configuration Menu
         var configMenu = new ToolStripMenuItem("Configuration");
@@ -47,18 +52,23 @@ public partial class Form1 : Form
         configMenu.DropDownItems.Add(new ToolStripSeparator());
         configMenu.DropDownItems.Add("Save Settings", null, (s, e) => SaveCommands());
         
-        // Quick Action: Add Files (Same design as Clear List)
+        // Quick Action: Add Files
         var addFilesMenu = new ToolStripMenuItem("Add Files", null, (s, e) => AddFiles());
-        addFilesMenu.ForeColor = Color.FromArgb(70, 130, 180); // Consistent SteelBlue
+        addFilesMenu.ForeColor = Color.FromArgb(70, 130, 180);
         addFilesMenu.Font = new Font(_menuStrip.Font, FontStyle.Bold);
 
         // Quick Action: Clear List
         var clearListItem = new ToolStripMenuItem("Clear List", null, (s, e) => _fileListBox.Items.Clear());
         clearListItem.ForeColor = Color.Maroon;
 
+        // Quick Action: Clear Log
+        var clearLogItem = new ToolStripMenuItem("Clear Log", null, (s, e) => _logConsole.Clear());
+        clearLogItem.ForeColor = Color.DarkGreen;
+
         _menuStrip.Items.Add(configMenu);
         _menuStrip.Items.Add(addFilesMenu);
         _menuStrip.Items.Add(clearListItem);
+        _menuStrip.Items.Add(clearLogItem);
         this.Controls.Add(_menuStrip);
         this.MainMenuStrip = _menuStrip;
 
@@ -72,26 +82,36 @@ public partial class Form1 : Form
         this.Controls.Add(_splitContainer);
         _splitContainer.SendToBack();
 
-        // 3. Log Console (Now in Panel1, aligned with File List)
-        _logConsole = new RichTextBox
+        // 3. Left Panel Layout (Panel 1)
+        var leftTable = new TableLayoutPanel
         {
-            Dock = DockStyle.Bottom,
-            Height = 310, // Twice as tall (was 150)
-            ReadOnly = true,
-            BackColor = Color.Black,
-            ForeColor = Color.LightGray,
-            Font = new Font("Consolas", 9),
-            BorderStyle = BorderStyle.None
+            Dock = DockStyle.Fill,
+            RowCount = 3,
+            ColumnCount = 1,
+            Padding = new Padding(10, 20, 10, 10) // Increased top padding to 20
+        };
+        leftTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));    // Header label
+        leftTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // File List
+        leftTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 320)); // Log Console area
+
+        var lblFiles = new Label 
+        { 
+            Text = "Staged Files:", 
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            ForeColor = Color.DimGray,
+            AutoSize = true,
+            Margin = new Padding(0, 5, 0, 5) // Added top margin to clear the menu bar shadow
         };
 
-        // 4. File List (Panel 1)
+        // 4. File List
         _fileListBox = new ListBox
         {
             Dock = DockStyle.Fill,
             SelectionMode = SelectionMode.MultiExtended,
             IntegralHeight = false,
             BorderStyle = BorderStyle.FixedSingle,
-            Font = new Font("Segoe UI", 9)
+            Font = new Font("Segoe UI", 11), // Larger, more readable font
+            BackColor = Color.White,
         };
 
         // Context Menu for ListBox
@@ -100,17 +120,36 @@ public partial class Form1 : Form
         listContextMenu.Items.Add(new ToolStripSeparator());
         listContextMenu.Items.Add("Clear All", null, (s, e) => _fileListBox.Items.Clear());
         _fileListBox.ContextMenuStrip = listContextMenu;
+
+        // 5. Log Console
+        _logConsole = new RichTextBox
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            BackColor = Color.Black,
+            ForeColor = Color.LightGray,
+            Font = new Font("Consolas", 10),
+            BorderStyle = BorderStyle.None,
+            Margin = new Padding(0, 10, 0, 0) // Gap between list and log
+        };
         
-        // Add components to Left Panel
-        _splitContainer.Panel1.Controls.Add(_fileListBox);
-        _splitContainer.Panel1.Controls.Add(_logConsole); // Log sits strictly under the files
+        // Context Menu for Log
+        var logContextMenu = new ContextMenuStrip();
+        logContextMenu.Items.Add("Clear Console", null, (s, e) => _logConsole.Clear());
+        _logConsole.ContextMenuStrip = logContextMenu;
+        
+        leftTable.Controls.Add(lblFiles, 0, 0);
+        leftTable.Controls.Add(_fileListBox, 0, 1);
+        leftTable.Controls.Add(_logConsole, 0, 2);
+        
+        _splitContainer.Panel1.Controls.Add(leftTable);
 
         // Right Panel (Command Deck)
         _commandDeck = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoScroll = true,
-            Padding = new Padding(10),
+            Padding = new Padding(10, 20, 10, 10), // Increased top padding to 20
             BackColor = Color.WhiteSmoke
         };
         _splitContainer.Panel2.Controls.Add(_commandDeck);
@@ -146,10 +185,10 @@ public partial class Form1 : Form
         var btn = new Button
         {
             Text = config.Name,
-            Width = 140, // Slightly narrower for better tiling
-            Height = 50, // Slightly shorter for better tiling
+            Width = 150, // Standardized width
+            Height = 55, // Standardized height
             FlatStyle = FlatStyle.Flat,
-            Margin = new Padding(8), // Increased margin for visual breathing room
+            Margin = new Padding(10, 5, 10, 5), // Balanced margins
             BackColor = _isEditMode ? Color.MistyRose : Color.AliceBlue,
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
             Tag = config

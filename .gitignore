@@ -1,0 +1,24 @@
+## Visual Studio
+.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## VS Code
+.vscode/
+
+## Rider
+.idea/
+
+## User Settings / Config
+# We usually ignore user-specific configs, 
+# but for this utility app, commands.json might be something you WANT to track.
+# If you don't want to track your custom buttons, uncomment the next line:
+# commands.json
+
+## Misc
+*.log
+.DS_Store

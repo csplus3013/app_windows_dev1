@@ -442,74 +442,92 @@ public partial class Form1 : Form
 
         Log($"--- Starting execution: {config.Name} ---", Color.LightSkyBlue, true);
         
-        if (files.Count == 0)
+        // Check if arguments contain any file-based placeholders
+        var placeholders = new[] { "$file", "{file}", "$path", "{path}", "$fullpath", "{fullpath}" };
+        if (placeholders.Any(p => config.Arguments.Contains(p)))
         {
-            // Check if arguments contain placeholder
-            if (config.Arguments.Contains("{file}") || config.Arguments.Contains("$file"))
+            if (files.Count == 0)
             {
                 Log("Error: No files selected. Please select files from the list to process.", Color.Red, true);
-            }
-            else
-            {
-                // Execute once without file replacement if no files selected and no placeholder
-                await RunProcessAsync(config.ExecutablePath, config.Arguments, token);
+                return;
             }
         }
-        else
+        else if (files.Count == 0)
         {
-            string stamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
-            int current = 0;
-            int total = files.Count;
+            // Execute once without file replacement if no files selected and no placeholders
+            await RunProcessAsync(config.ExecutablePath, config.Arguments, token, "#1");
+            return;
+        }
+        
+        string stamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+        int current = 0;
+        int total = files.Count;
 
-            foreach (var file in files)
+        foreach (var file in files)
+        {
+            token.ThrowIfCancellationRequested();
+
+            current++;
+            Log($"========== {current} of {total} ==========", Color.Gold, true);
+            
+            // Rate-limit UI updates to prevent flooding the message loop (especially when log is disabled)
+            if (total < 100 || current % 5 == 0 || current == total)
             {
-                token.ThrowIfCancellationRequested();
-
-                current++;
-                Log($"========== {current} of {total} ==========", Color.Gold, true);
-                
-                // Rate-limit UI updates to prevent flooding the message loop (especially when log is disabled)
-                if (total < 100 || current % 5 == 0 || current == total)
-                {
-                    UpdateStagedFilesInfo(current, total);
-                }
-                
-                string args = config.Arguments;
-
-                // 1. Smart Conjunction Logic:
-                // Treat '+' as a glue that merges into a single quoted block.
-                args = args.Replace("$file+", "\u001f" + file)
-                           .Replace("+$file", file + "\u001f")
-                           .Replace("{file}+", "\u001f" + file)
-                           .Replace("+{file}", file + "\u001f")
-                           .Replace("$dt+", "\u001f" + stamp)
-                           .Replace("+$dt", stamp + "\u001f")
-                           .Replace("+", ""); // Join middle literals
-
-                // Clean up duplicate markers and convert to quotes
-                while (args.Contains("\u001f\u001f")) args = args.Replace("\u001f\u001f", "");
-                args = args.Replace("\u001f", "\"");
-
-                // 2. Standard replacements for standalone placeholders
-                args = args.Replace("{file}", $"\"{file}\"")
-                           .Replace("$file", $"\"{file}\"")
-                           .Replace("$dt", stamp);
-
-                await RunProcessAsync(config.ExecutablePath, args, token);
+                UpdateStagedFilesInfo(current, total);
             }
+            
+            string pathOnly = Path.GetDirectoryName(file) ?? "";
+            string fileNameOnly = Path.GetFileName(file);
+            string fullPath = file;
+
+            string args = config.Arguments;
+
+            // 1. Smart Conjunction Logic:
+            // Treat '+' as a glue that merges into a single quoted block.
+            args = args.Replace("$path+", "\u001f" + pathOnly)
+                       .Replace("+$path", pathOnly + "\u001f")
+                       .Replace("{path}+", "\u001f" + pathOnly)
+                       .Replace("+{path}", pathOnly + "\u001f")
+                       .Replace("$file+", "\u001f" + fileNameOnly)
+                       .Replace("+$file", fileNameOnly + "\u001f")
+                       .Replace("{file}+", "\u001f" + fileNameOnly)
+                       .Replace("+{file}", fileNameOnly + "\u001f")
+                       .Replace("$fullpath+", "\u001f" + fullPath)
+                       .Replace("+$fullpath", fullPath + "\u001f")
+                       .Replace("{fullpath}+", "\u001f" + fullPath)
+                       .Replace("+{fullpath}", fullPath + "\u001f")
+                       .Replace("$dt+", "\u001f" + stamp)
+                       .Replace("+$dt", stamp + "\u001f")
+                       .Replace("+", ""); // Join middle literals
+
+            // Clean up duplicate markers and convert to quotes
+            while (args.Contains("\u001f\u001f")) args = args.Replace("\u001f\u001f", "");
+            args = args.Replace("\u001f", "\"");
+
+            // 2. Standard replacements for standalone placeholders
+            args = args.Replace("{path}", $"\"{pathOnly}\"")
+                       .Replace("$path", $"\"{pathOnly}\"")
+                       .Replace("{file}", $"\"{fileNameOnly}\"")
+                       .Replace("$file", $"\"{fileNameOnly}\"")
+                       .Replace("{fullpath}", $"\"{fullPath}\"")
+                       .Replace("$fullpath", $"\"{fullPath}\"")
+                       .Replace("$dt", stamp);
+
+            await RunProcessAsync(config.ExecutablePath, args, token, $"#{current}");
         }
 
         Log($"--- Finished: {config.Name} ---", Color.LimeGreen, true);
         UpdateStagedFilesInfo();
     }
 
-    private async Task RunProcessAsync(string exe, string args, CancellationToken token)
+    private async Task RunProcessAsync(string exe, string args, CancellationToken token, string? prefix = null)
     {
+        string logPrefix = prefix != null ? $"[{prefix}] " : "";
         await Task.Run(() =>
         {
             try
             {
-                if (_isLogEnabled) Log($"Executing: {exe} {args}");
+                if (_isLogEnabled) Log($"{logPrefix}Executing: {exe} {args}");
 
                 var startInfo = new ProcessStartInfo
                     {
@@ -532,8 +550,8 @@ public partial class Form1 : Form
                     catch { /* Ignore */ }
                 });
 
-                process.OutputDataReceived += (s, e) => { if (e.Data != null && _isLogEnabled) Log($"[OUT] {e.Data}"); };
-                process.ErrorDataReceived += (s, e) => { if (e.Data != null && _isLogEnabled) Log($"[ERR] {e.Data}", Color.Red, true); };
+                process.OutputDataReceived += (s, e) => { if (e.Data != null && _isLogEnabled) Log($"{logPrefix}[OUT] {e.Data}"); };
+                process.ErrorDataReceived += (s, e) => { if (e.Data != null && _isLogEnabled) Log($"{logPrefix}[ERR] {e.Data}", Color.Red, true); };
 
                 process.Start();
 

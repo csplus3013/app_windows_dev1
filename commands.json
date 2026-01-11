@@ -2,36 +2,46 @@
   {
     "Name": "CHECK FILE TYPE",
     "ExecutablePath": "D:\\soft\\exiftool\\check_type.cmd",
-    "Arguments": "$file"
+    "Arguments": "$fullpath"
   },
   {
-    "Name": "CHECK c2pa VALID ",
+    "Name": "CHECK SIG C2PA",
     "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
-    "Arguments": "-d $file"
+    "Arguments": "-d $fullpath"
   },
   {
-    "Name": "CHECK c2pa VALID TRUST",
+    "Name": "CHECK C2PA valid trust",
     "ExecutablePath": "D:\\soft\\c2patool\\check_trust.cmd",
-    "Arguments": "$file"
+    "Arguments": "$fullpath"
+  },
+  {
+    "Name": "CHECK Data exiftool",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-G1 -a -s $fullpath"
+  },
+  {
+    "Name": "CHECK Data ffmpeg",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\ffprobe.exe",
+    "Arguments": "-v quiet -show_format -show_streams -show_entries format_tags:stream_tags $fullpath"
+  },
+  {
+    "Name": "Clear all metadata exiftool",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-all= -overwrite_original $fullpath"
+  },
+  {
+    "Name": "Clear Flux data exiftool",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-Workflow= -Prompt= -overwrite_original $fullpath"
+  },
+  {
+    "Name": "CLEAR all data ffmpeg",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\clean_video.bat",
+    "Arguments": "$fullpath"
   },
   {
     "Name": "APPLY C2PA",
     "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
-    "Arguments": "$file -m d:\\soft\\c2patool\\my_manifest_image.json --no_signing_verify -o $file -f"
-  },
-  {
-    "Name": "CHECK DATA",
-    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "-G1 -a -s $file"
-  },
-  {
-    "Name": "Clear all metadata",
-    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "-all= -overwrite_original $file"
-  },
-  {
-    "Name": "Clear Flux data",
-    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
-    "Arguments": "-Workflow= -Prompt= -overwrite_original $file"
+    "Arguments": "$fullpath -m d:\\soft\\c2patool\\my_manifest_image.json --no_signing_verify -o $fullpath -f"
   }
 ]

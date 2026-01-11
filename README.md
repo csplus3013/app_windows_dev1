@@ -6,10 +6,12 @@ A high-performance .NET 8 Windows Forms utility designed for engineers and power
 
 - **Dynamic Command Deck**: Instantly create and manage bespoke buttons for any executable or script on your system.
 - **Smart Placeholder System**:
-  - `$file`: Injects the full, quoted path of the current file.
+  - `$path`: Injects the directory path of the file.
+  - `$file`: Injects the filename (without path).
+  - `$fullpath`: Injects the full path of the file.
   - `$dt`: Injects a Unix millisecond timestamp for versioning.
 - **Advanced Conjunction Logic**: Use the `+` operator to join paths and variables into a **unified quoted string**.
-  - Example: `$file+_+dt` produces `"C:\path\file.png_17679..."` (unified quotes, no broken paths).
+  - Example: `$path+\\+processed_+$file` produces `"C:\path\processed_file.png"`.
 - **High-Performance Log Console**:
   - **Asynchronous Batching**: Updates every 100ms to prevent UI freezing during massive output bursts.
   - **Color-Coded Feedback**: Success (**Bold Green**), Errors (**Bold Red**), and Process Starts (**Bold Blue**).
@@ -28,8 +30,8 @@ Navigate to `Configuration > Add New Command`.
 - **Name**: The label for your button.
 - **Executable**: Path to your tool (e.g., `c2patool.exe`, `exiftool.exe`, `ffmpeg.exe`).
 - **Arguments**: Define how the tool should run.
-  - *Standard*: `$file -v`
-  - *Output with Timestamp*: `-o $file+_+dt`
+  - *Standard*: `$fullpath -v`
+  - *Output with Timestamp*: `-o $path+\\+$file+_+dt`
   - *Prefix*: `--prefix $dt+_+$file`
 
 ### 3. Execution & Management

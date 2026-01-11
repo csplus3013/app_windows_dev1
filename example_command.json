@@ -1,0 +1,17 @@
+[
+    {
+        "Name": "[HELP] View Variables",
+        "ExecutablePath": "cmd.exe",
+        "Arguments": "/c echo [DIRECTORY] $path && echo [FILENAME] $file && echo [FULLPATH] $fullpath && echo [STAMP] $dt"
+    },
+    {
+        "Name": "[HELP] Path Conjunction",
+        "ExecutablePath": "cmd.exe",
+        "Arguments": "/c echo Joined path example: $path+\\\\+processed_+$file"
+    },
+    {
+        "Name": "[HELP] Multi-Command (&&)",
+        "ExecutablePath": "cmd.exe",
+        "Arguments": "/c echo Task 1: Check format && ffprobe.exe -v quiet -show_format $fullpath && echo Task 2: Done!"
+    }
+]

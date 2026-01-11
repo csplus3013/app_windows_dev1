@@ -1015,7 +1015,7 @@ public partial class Form1 : Form
 
             var lblTip = new Label 
             { 
-                Text = "Tip: Use $file for path and $dt for stamp. Join with + to fix quoting: $file+$dt", 
+                Text = "Tip: $path (dir), $file (name), $fullpath (all), $dt (stamp). Use + for joined quotes: $path+\\+$file", 
                 ForeColor = Color.DimGray,
                 Font = new Font(this.Font.FontFamily, 8),
                 Dock = DockStyle.Fill,

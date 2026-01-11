@@ -39,6 +39,11 @@ Navigate to `Configuration > Add New Command`.
 - **Iteration Tracking**: The log will display `========== X of Y ==========` for clear progress monitoring.
 - **Edit Mode**: Toggle `Configuration > Edit Mode` and click any button to modify its path or arguments.
 
+### 💡 Pro Tip: Shell Operators (&&, >, etc.)
+If you need to run multiple commands (e.g., `command1 && command2`), you cannot pass them directly to an executable. Instead:
+1.  **Use cmd.exe**: Set **Executable** to `cmd.exe` and **Arguments** to `/c "tool.exe arg1 && tool.exe arg2"`
+2.  **Use a .bat file**: Wrap your logic in a batch file and point the button to it.
+
 ## ⚙️ Technical Specifications
 
 - **Target Framework**: .NET 8.0 (Windows Forms).

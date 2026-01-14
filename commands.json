@@ -53,5 +53,10 @@
     "Name": "APPLY Flux ffmpeg",
     "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\apply_metadata_video.bat",
     "Arguments": "$fullpath flux"
+  },
+  {
+    "Name": "APPLY LOGO on vid",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\apply_logo_video.bat",
+    "Arguments": "$fullpath"
   }
 ]

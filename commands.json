@@ -22,7 +22,7 @@
   {
     "Name": "CHECK Data ffmpeg",
     "ExecutablePath": "D:\\soft\\ffmpeg\\ffprobe.exe",
-    "Arguments": "-v quiet -show_format -show_streams -show_entries format_tags:stream_tags $fullpath"
+    "Arguments": " -loglevel error -v quiet -show_format -show_streams -show_entries format_tags:stream_tags $fullpath"
   },
   {
     "Name": "Clear all metadata exiftool",
@@ -36,12 +36,22 @@
   },
   {
     "Name": "CLEAR all data ffmpeg",
-    "ExecutablePath": "D:\\soft\\ffmpeg\\clean_video.bat",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\clean_video.bat",
     "Arguments": "$fullpath"
   },
   {
     "Name": "APPLY C2PA",
     "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
     "Arguments": "$fullpath -m d:\\soft\\c2patool\\my_manifest_image.json --no_signing_verify -o $fullpath -f"
+  },
+  {
+    "Name": "APPLY Google ffmpeg",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\apply_metadata_video.bat",
+    "Arguments": "$fullpath google"
+  },
+  {
+    "Name": "APPLY Flux ffmpeg",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\apply_metadata_video.bat",
+    "Arguments": "$fullpath flux"
   }
 ]

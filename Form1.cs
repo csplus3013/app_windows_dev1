@@ -318,10 +318,10 @@ public partial class Form1 : Form
         var btn = new Button
         {
             Text = config.Name,
-            Width = 150, // Standardized width
-            Height = 55, // Standardized height
+            Width = 130, // Semi-Standardized width
+            Height = 40, // Reduced height for compactness
             FlatStyle = FlatStyle.Flat,
-            Margin = new Padding(10, 5, 10, 5), // Balanced margins
+            Margin = new Padding(5, 5, 5, 5), // Tighter margins
             BackColor = _isEditMode ? Color.MistyRose : Color.AliceBlue,
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
             Tag = config

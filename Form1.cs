@@ -313,6 +313,12 @@ public partial class Form1 : Form
         }
     }
 
+    private Color GetButtonColor(string colorStr)
+    {
+        try { return string.IsNullOrWhiteSpace(colorStr) ? Color.AliceBlue : ColorTranslator.FromHtml(colorStr); }
+        catch { return Color.AliceBlue; }
+    }
+
     private void CreateCommandButton(CommandConfig config)
     {
         var btn = new Button
@@ -322,7 +328,7 @@ public partial class Form1 : Form
             Height = 40, // Reduced height for compactness
             FlatStyle = FlatStyle.Flat,
             Margin = new Padding(5, 5, 5, 5), // Tighter margins
-            BackColor = _isEditMode ? Color.MistyRose : Color.AliceBlue,
+            BackColor = _isEditMode ? Color.MistyRose : GetButtonColor(config.BackgroundColor),
             Font = new Font("Segoe UI", 9, FontStyle.Regular),
             Tag = config
         };
@@ -966,7 +972,7 @@ public partial class Form1 : Form
         public CommandInputDialog(CommandConfig? existing = null)
         {
             CommandConfig = existing != null
-                ? new CommandConfig(existing.Name, existing.ExecutablePath, existing.Arguments)
+                ? new CommandConfig(existing.Name, existing.ExecutablePath, existing.Arguments) { BackgroundColor = existing.BackgroundColor }
                 : new CommandConfig();
             SetupUI(existing != null);
             
@@ -981,12 +987,12 @@ public partial class Form1 : Form
 
         private void SetupUI(bool isEditing)
         {
-            this.Text = "Add New Command";
-            this.Size = new Size(500, 320); // Increased height for tip label
+            this.Text = isEditing ? "Edit Command" : "Add New Command";
+            this.Size = new Size(500, 360); // Increased height for color picker
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.StartPosition = FormStartPosition.CenterParent;
 
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(10), RowCount = 5, ColumnCount = 3 };
+            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(10), RowCount = 6, ColumnCount = 3 }; // RowCount 6
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40));
@@ -1013,6 +1019,40 @@ public partial class Form1 : Form
             layout.Controls.Add(_txtArgs, 1, 2);
             layout.SetColumnSpan(_txtArgs, 2);
 
+            // Row 3: Color Picker
+            layout.Controls.Add(new Label { Text = "Color:", Anchor = AnchorStyles.Left }, 0, 3);
+            var btnColor = new Button 
+            { 
+                Text = CommandConfig.BackgroundColor, 
+                Dock = DockStyle.Fill, 
+                FlatStyle = FlatStyle.Flat 
+            };
+            
+            // Initial color setup
+            try { btnColor.BackColor = string.IsNullOrWhiteSpace(CommandConfig.BackgroundColor) ? Color.AliceBlue : ColorTranslator.FromHtml(CommandConfig.BackgroundColor); }
+            catch { btnColor.BackColor = Color.AliceBlue; }
+
+            // Ensure text is readable
+            btnColor.ForeColor = btnColor.BackColor.GetBrightness() < 0.5 ? Color.White : Color.Black;
+
+            btnColor.Click += (s, e) =>
+            {
+                 using var cd = new ColorDialog();
+                 cd.Color = btnColor.BackColor;
+                 if (cd.ShowDialog() == DialogResult.OK) 
+                 {
+                     btnColor.BackColor = cd.Color;
+                     btnColor.ForeColor = cd.Color.GetBrightness() < 0.5 ? Color.White : Color.Black;
+                     // Convert to HTML hex if it's not a known name to ensure portability
+                     string htmlColor = ColorTranslator.ToHtml(cd.Color);
+                     btnColor.Text = htmlColor;
+                     CommandConfig.BackgroundColor = htmlColor;
+                 }
+            };
+            layout.Controls.Add(btnColor, 1, 3);
+            layout.SetColumnSpan(btnColor, 2);
+
+
             var lblTip = new Label 
             { 
                 Text = "Tip: $path (dir), $file (name), $fullpath (all), $dt (stamp). Use + for joined quotes: $path+\\+$file", 
@@ -1021,7 +1061,7 @@ public partial class Form1 : Form
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.TopLeft
             };
-            layout.Controls.Add(lblTip, 1, 3);
+            layout.Controls.Add(lblTip, 1, 4);
             layout.SetColumnSpan(lblTip, 2);
 
             var panelButtons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
@@ -1031,6 +1071,8 @@ public partial class Form1 : Form
                 CommandConfig.Name = _txtName.Text;
                 CommandConfig.ExecutablePath = _txtExe.Text;
                 CommandConfig.Arguments = _txtArgs.Text;
+                // BackgroundColor is already updated in the color button click, 
+                // but if they didn't click it, it remains the default/existing.
             };
             var btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             
@@ -1044,7 +1086,7 @@ public partial class Form1 : Form
                 panelButtons.Controls.Add(btnDelete);
             }
             
-            layout.Controls.Add(panelButtons, 1, 4);
+            layout.Controls.Add(panelButtons, 1, 5);
             layout.SetColumnSpan(panelButtons, 2);
 
             this.Controls.Add(layout);

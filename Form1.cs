@@ -16,7 +16,7 @@ namespace MySimpleApp;
 public partial class Form1 : Form
 {
     private readonly List<CommandConfig> _commands = new();
-    private const string ConfigFileName = "commands.json";
+    private readonly string _configFilePath;
     private readonly List<Process> _activeProcesses = new();
     private readonly object _processLock = new();
     private readonly ConcurrentDictionary<CommandConfig, CancellationTokenSource> _runningCommands = new();
@@ -43,9 +43,11 @@ public partial class Form1 : Form
     private Label _lblFiles = null!;
     private bool _isEditMode = false;
 
-    public Form1()
+    public Form1(string? configPath = null)
     {
         InitializeComponent();
+        
+        _configFilePath = !string.IsNullOrWhiteSpace(configPath) ? configPath : "commands.json";
         
         _logFlushTimer = new System.Windows.Forms.Timer { Interval = 100 };
         _logFlushTimer.Tick += (s, e) => BatchFlushLog();
@@ -919,7 +921,7 @@ public partial class Form1 : Form
         try
         {
             var json = JsonSerializer.Serialize(_commands, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(ConfigFileName, json);
+            File.WriteAllText(_configFilePath, json);
             Log("Settings saved successfully.", Color.LimeGreen, true);
         }
         catch (Exception ex)
@@ -930,10 +932,10 @@ public partial class Form1 : Form
 
     private void LoadCommands()
     {
-        string fullPath = Path.GetFullPath(ConfigFileName);
+        string fullPath = Path.GetFullPath(_configFilePath);
         Log($"Loading config from: {fullPath}");
 
-        if (!File.Exists(ConfigFileName))
+        if (!File.Exists(_configFilePath))
         {
             Log("No commands.json found. You can add new commands via the Configuration menu.");
             return;
@@ -941,7 +943,7 @@ public partial class Form1 : Form
 
         try
         {
-            var json = File.ReadAllText(ConfigFileName);
+            var json = File.ReadAllText(_configFilePath);
             var commands = JsonSerializer.Deserialize<List<CommandConfig>>(json);
             if (commands != null)
             {

@@ -1,0 +1,74 @@
+[
+  {
+    "Name": "CHECK FILE TYPE22",
+    "ExecutablePath": "D:\\soft\\exiftool\\check_type.cmd",
+    "Arguments": "$fullpath",
+    "BackgroundColor": "#80FF00"
+  },
+  {
+    "Name": "CHECK SIG C2PA",
+    "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
+    "Arguments": "-d $fullpath",
+    "BackgroundColor": "#80FF00"
+  },
+  {
+    "Name": "CHECK C2PA valid trust",
+    "ExecutablePath": "D:\\soft\\c2patool\\check_trust.cmd",
+    "Arguments": "$fullpath",
+    "BackgroundColor": "#80FF00"
+  },
+  {
+    "Name": "CHECK Data exiftool",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-G1 -a -s $fullpath",
+    "BackgroundColor": "#80FF00"
+  },
+  {
+    "Name": "CHECK Data ffmpeg",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\ffprobe.exe",
+    "Arguments": " -loglevel error -v quiet -show_format -show_streams -show_entries format_tags:stream_tags $fullpath",
+    "BackgroundColor": "#80FF00"
+  },
+  {
+    "Name": "Clear all metadata exiftool",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-all= -overwrite_original $fullpath",
+    "BackgroundColor": "White"
+  },
+  {
+    "Name": "Clear Flux data exiftool",
+    "ExecutablePath": "D:\\soft\\exiftool\\exiftool.exe",
+    "Arguments": "-Workflow= -Prompt= -overwrite_original $fullpath",
+    "BackgroundColor": "White"
+  },
+  {
+    "Name": "CLEAR all data ffmpeg",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\clean_video.bat",
+    "Arguments": "$fullpath",
+    "BackgroundColor": "White"
+  },
+  {
+    "Name": "APPLY C2PA",
+    "ExecutablePath": "D:\\soft\\c2patool\\c2patool.exe",
+    "Arguments": "$fullpath -m d:\\soft\\c2patool\\my_manifest_image.json --no_signing_verify -o $fullpath -f",
+    "BackgroundColor": "Yellow"
+  },
+  {
+    "Name": "APPLY Google ffmpeg",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\apply_metadata_video.bat",
+    "Arguments": "$fullpath google",
+    "BackgroundColor": "Yellow"
+  },
+  {
+    "Name": "APPLY Flux ffmpeg",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\apply_metadata_video.bat",
+    "Arguments": "$fullpath flux",
+    "BackgroundColor": "Yellow"
+  },
+  {
+    "Name": "APPLY LOGO on vid",
+    "ExecutablePath": "D:\\soft\\ffmpeg\\custom\\apply_logo_video.bat",
+    "Arguments": "$fullpath",
+    "BackgroundColor": "Yellow"
+  }
+]

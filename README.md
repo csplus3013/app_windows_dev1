@@ -19,6 +19,7 @@ A high-performance .NET 8 Windows Forms utility designed for engineers and power
   - **Scale**: Supports up to 100,000 lines of history with optimized memory trimming.
 - **Process Lifecycle Management**: Automatically tracks and terminates all child processes when the application is closed, preventing orphaned "zombie" tasks.
 - **Persistence**: Configuration is stored in a simple, portable `commands.json`.
+- **Multi-Instance Support**: Run multiple isolated copies of the app simultaneously. Pass a JSON path argument to load a custom configuration (e.g., `MySimpleApp.exe specialized_commands.json`).
 
 ## 🛠 How to Use
 
@@ -43,6 +44,14 @@ Navigate to `Configuration > Add New Command`.
 If you need to run multiple commands (e.g., `command1 && command2`), you cannot pass them directly to an executable. Instead:
 1.  **Use cmd.exe**: Set **Executable** to `cmd.exe` and **Arguments** to `/c "tool.exe arg1 && tool.exe arg2"`
 2.  **Use a .bat file**: Wrap your logic in a batch file and point the button to it.
+
+### 4. Advanced Launch Options
+You can load a specific command file (instead of the default `commands.json`) by passing it as an argument:
+```powershell
+# Load a specific config file
+MySimpleApp.exe "C:\Configs\video_tools.json"
+```
+This allows you to create different shortcuts for different workflows (e.g., "Image Processing", "Video Tools") and run them simultaneously.
 
 ## ⚙️ Technical Specifications
 
